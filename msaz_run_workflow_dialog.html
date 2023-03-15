@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Run Workflow</title>
+    <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-js/1.5.0/css/fabric.min.css" />
+    <link rel="stylesheet" href="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-js/1.5.0/css/fabric.components.min.css" />
+    <script type="text/javascript" src="ClientGlobalContext.js.aspx"></script>
+    <script src="https://static2.sharepointonline.com/files/fabric/office-ui-fabric-js/1.5.0/js/fabric.min.js"></script>
+
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+    <style type="text/css">
+
+
+        *, ::after, ::before {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Segoe UI,Tahoma,Arial;
+            margin: 10px;
+            font-size:13px;
+        }
+
+        .select-wf {
+            
+            padding: 10px;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            padding-bottom: 10px;
+            padding-right: 10px;
+        }
+
+        .footerButton {
+            width: 150px;
+        }
+
+
+        #errordiv {
+            display:none;
+            color: #842029;
+            background-color: #f8d7da;
+            border-color: #f5c2c7;
+            position: relative;
+            padding: 1rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+        }
+
+
+        .choices__inner {
+            min-height: 28px !important;
+            border-radius: 0 !important;
+        }
+
+        .choices__list--dropdown .choices__list, .choices__list[aria-expanded] .choices__list {
+            max-height: 60vh !important;
+        }
+
+
+    </style>
+    <script type="text/javascript">
+
+        function getUrlParameters() {
+            var queryString = location.search.substring(1);
+            var params = {};
+            var queryStringParts = queryString.split("&");
+            for (var i = 0; i < queryStringParts.length; i++) {
+                var pieces = queryStringParts[i].split("=");
+                params[pieces[0].toLowerCase()] = pieces.length === 1 ? null : decodeURIComponent(pieces[1]);
+            }
+
+            return params;
+        }
+
+        function onPageLoad() {
+            var urlParams = getUrlParameters();
+            console.log(urlParams);
+            var entityname = urlParams.data.split(";")[0];
+            var nbrecords = urlParams.data.split(";")[1];
+            var errordiv = document.getElementById("errordiv");
+            var cancelButton = document.getElementById("btnCancel");
+
+            new fabric['Button'](cancelButton, function () {
+                window.close();
+            });
+
+            var okButton = document.getElementById("btnOK");
+
+            
+
+            const choice = document.getElementById("choices-workflow");
+            const choices = new Choices(choice, {
+                position: 'bottom',
+                noChoicesText: 'There is no active on demand Workflow',
+                placeholder: true,
+                placeholderValue: "Please select a Workflow",
+            });
+
+            choice.addEventListener(
+                'choice',
+                function (event) {
+
+                    console.log(event.detail.choice);
+                    if (event.detail.choice.value != "") {
+                        okButton.disabled = false;
+                    } else {
+                        okButton.disabled = true;
+                    }
+
+                },
+                false,
+            );
+
+            new fabric['Button'](okButton, function () {
+
+
+                var confirmStrings = {
+                    subtitle: "This workflow will be applied to " + nbrecords + " record(s)",
+                    text: "Would you like to continue ?",
+                    title: "Confirm Application of Workflow"
+                };
+                var confirmOptions = { height: 200, width: 450 };
+                Xrm.Navigation.openConfirmDialog(confirmStrings, confirmOptions).then(
+                    function (success) {
+                        if (success.confirmed) {
+                            window.returnValue = choices.getValue(true);
+                            window.close();
+                        }
+                    });
+            });
+
+
+            choices.setChoices(async () => {
+
+                try {
+                    return fetch(Xrm.Utility.getGlobalContext().getClientUrl() + "/api/data/v9.1/workflows?$select=workflowid,name&$filter=(primaryentity eq '" + entityname +"' and ondemand eq true and statecode eq 1 and type eq 1 and category eq 0)&$orderby=name asc", {
+                        method: "GET",
+                        headers: {
+                            "OData-MaxVersion": "4.0",
+                            "OData-Version": "4.0",
+                            "Content-Type": "application/json; charset=utf-8",
+                            "Accept": "application/json",
+                            "Prefer": "odata.include-annotations=*"
+                        }
+                    }).then(
+                        function success(response) {
+                            return response.json().then((json) => { if (response.ok) { return json; } else { throw json.error; } });
+                        }
+                    ).then(function (response) {
+                        return response.value;
+                    }).catch(function (error) {
+                        console.log(error.message);
+                        errordiv.innerHTML = error.message;
+                        errordiv.style.display = "block";
+                        
+                    });
+                } catch (err) {
+                    console.error(err);
+                    errordiv.innerHTML = error.message;
+                    errordiv.style.display = "block";
+                    
+                }
+            },
+                'workflowid',
+                'name',
+                false
+
+            );
+
+
+        }
+    </script>
+</head>
+<body onload="onPageLoad();">
+
+    <div id="errordiv">
+    </div>
+
+        <div class="select-wf">
+            <select class=""
+                    data-trigger
+                    name="choices-workflow"
+                    id="choices-workflow"
+                    placeholder="Please select a Workflow">
+            </select>
+        </div>
+        <div class="footer">
+            <button disabled class="ms-Button ms-Button--primary footerButton" id="btnOK">
+                <span class="ms-Button-label">Run</span>
+            </button>
+            <button class="ms-Button ms-Button--primary footerButton" id="btnCancel">
+                <span class="ms-Button-label">Cancel</span>
+            </button>
+        </div>
+</body>
+</html>
