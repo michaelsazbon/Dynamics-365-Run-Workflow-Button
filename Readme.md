@@ -14,5 +14,6 @@ Recover the feature removed by Microsoft in Dynamics 365 V9.1 On Premise allowin
 
 ## Usage
 
+- Import the managed solution from the release page [Dynamics365RunWorfklowButton_1_0_0_0_managed.zip](https://github.com/michaelsazbon/Dynamics-365-Run-Workflow-Button/releases/tag/Dynamics365RunWorfklowButton_1_0_0_0) 
 - Select records
 - Click on the button Run a Workflow
